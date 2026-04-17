@@ -1,5 +1,7 @@
 "use server";
 
+export const dynamic = 'force-dynamic';
+
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
