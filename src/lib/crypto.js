@@ -140,7 +140,7 @@ export const CryptoEngine = {
     payloadToSign.set(new Uint8Array(ciphertext), iv.byteLength);
 
     const signature = await window.crypto.subtle.sign(
-      { name: "ECDSA", hash: { name: "SHA-256" } }, myPrivSigKey, payloadToSign
+      { name: "ECDSA", hash: { name: "SHA-384" } }, myPrivSigKey, payloadToSign
     );
 
     return JSON.stringify({
@@ -167,7 +167,7 @@ export const CryptoEngine = {
 
     // ANTI-MASQUERADE LOGIC
     const isValid = await window.crypto.subtle.verify(
-      { name: "ECDSA", hash: { name: "SHA-256" } }, peerPubSigKey, signature, payloadToSign
+      { name: "ECDSA", hash: { name: "SHA-384" } }, peerPubSigKey, signature, payloadToSign
     );
 
     if (!isValid) throw new Error("CRITICAL SEC: Digital Signature failed verification. Message forged/masquerading detected.");

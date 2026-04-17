@@ -67,7 +67,8 @@ export default function Register() {
         }, 2000);
       }
     } catch (err) {
-      setError("Cryptographic engine failure. Retry or check browser compatibility.");
+      console.error("[CryptoEngine] Fatal error:", err);
+      setError(`Cryptographic engine failure: ${err?.message || err?.name || "Unknown error"}. Ensure you are on HTTPS and using a modern browser.`);
       setStatus("idle");
     }
   }
@@ -116,6 +117,8 @@ export default function Register() {
         <p style={{ textAlign: "center", fontSize: "0.875rem", color: "var(--text-secondary)" }}>
           Already have credentials? <Link href="/login" style={{ color: "var(--accent-cyan)" }}>Authenticate</Link>
         </p>
+
+        <p style={{ textAlign: "center", fontSize: "0.65rem", color: "rgba(255,255,255,0.2)" }}>SECURE-GEN v1.2</p>
 
       </form>
     </main>

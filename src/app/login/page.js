@@ -90,6 +90,7 @@ function LoginForm() {
       <p style={{ textAlign: "center", fontSize: "0.875rem", color: "var(--text-secondary)" }}>
         Unregistered node? <Link href="/register" style={{ color: "var(--accent-cyan)" }}>Initialize Here</Link>
       </p>
+      <p style={{ textAlign: "center", fontSize: "0.65rem", color: "rgba(255,255,255,0.2)" }}>SECURE-GEN v1.2</p>
 
     </form>
   );
