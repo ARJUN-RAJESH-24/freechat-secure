@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { registerUser } from "@/app/actions/auth";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -10,6 +10,15 @@ export default function Register() {
   const router = useRouter();
   const [error, setError] = useState("");
   const [status, setStatus] = useState("idle"); // idle | generating | submitting | success
+
+  // Proactive Secure Context Check
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      if (!window.isSecureContext || !window.crypto || !window.crypto.subtle) {
+        setError("CRITICAL: Secure Context Required. The cryptographic engine is disabled over insecure connections (HTTP). Please ensure you are accessing FreeChat via HTTPS.");
+      }
+    }
+  }, []);
 
   async function handleSubmit(e) {
     e.preventDefault();

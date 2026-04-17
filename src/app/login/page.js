@@ -2,7 +2,7 @@
 
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 
 function LoginForm() {
@@ -11,6 +11,15 @@ function LoginForm() {
   const registered = searchParams.get("registered");
   const [error, setError] = useState("");
   const [status, setStatus] = useState("idle"); // idle | authenticating | success
+
+  // Proactive Secure Context Check
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      if (!window.isSecureContext || !window.crypto || !window.crypto.subtle) {
+        setError("CRITICAL: Secure Context Required. The cryptographic engine is disabled over insecure connections (HTTP). Please ensure you are accessing FreeChat via HTTPS.");
+      }
+    }
+  }, []);
 
   async function handleSubmit(e) {
     e.preventDefault();
