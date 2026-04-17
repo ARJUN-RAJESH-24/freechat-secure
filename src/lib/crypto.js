@@ -31,8 +31,9 @@ class CryptoAuthError extends Error { constructor(msg) { super(msg); this.name =
 class CryptoDecryptError extends Error { constructor(msg) { super(msg); this.name = 'CryptoDecryptError'; } }
 class CryptoKeyError extends Error { constructor(msg) { super(msg); this.name = 'CryptoKeyError'; } }
 
-// Cache for derived shared secrets (WeakMap keyed by peer public key string)
-const sharedKeyCache = new WeakMap();
+// Cache for derived shared secrets (Map keyed by peer public key Base64 string)
+// WeakMap requires object keys — use a regular Map for string keys.
+const sharedKeyCache = new Map();
 
 export const CryptoEngine = {
   // Generate ECDSA and ECDH pairs
