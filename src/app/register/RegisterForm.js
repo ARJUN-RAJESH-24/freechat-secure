@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { registerUser } from "@/app/actions/auth";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { CryptoEngine } from "@/lib/crypto";
@@ -52,13 +51,23 @@ export default function RegisterForm() {
         password, signaturePair, encryptionPair
       );
 
-      formData.append("publicKey", publicKeyPayload);
-      formData.append("encryptedPrivateKey", encryptedPrivateKeyPayload);
+      // Use a stable REST API endpoint instead of a Server Action.
+      // Server Action IDs change with every deployment, causing stale-ID errors.
+      const res = await fetch("/api/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: formData.get("username"),
+          password: formData.get("password"),
+          publicKey: publicKeyPayload,
+          encryptedPrivateKey: encryptedPrivateKeyPayload,
+        }),
+      });
 
-      const res = await registerUser(formData);
+      const data = await res.json();
 
-      if (res.error) {
-        setError(res.error);
+      if (!res.ok || data.error) {
+        setError(data.error || "Registration failed.");
         setStatus("idle");
       } else {
         setStatus("success");
