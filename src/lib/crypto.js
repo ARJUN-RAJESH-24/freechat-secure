@@ -26,6 +26,10 @@ function base64ToArrayBuffer(base64) {
 export const CryptoEngine = {
   // Generate ECDSA and ECDH pairs
   async generateIdentity() {
+    // Ensure Web Crypto API is available and we are in a secure context
+    if (typeof window === 'undefined' || !window.crypto || !window.crypto.subtle) {
+      throw new Error('Web Crypto API not available. Ensure you are accessing the app over HTTPS in a modern browser.');
+    }
     const signaturePair = await window.crypto.subtle.generateKey(
       { name: "ECDSA", namedCurve: "P-384" }, true, ["sign", "verify"]
     );
