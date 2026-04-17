@@ -142,10 +142,17 @@ export default function ClientChat({ initialChats, currentUser, encryptedPrivate
     e.target.content.value = "";
 
     try {
+      // Look up the sender's own public key from the participants list for fingerprint binding
+      const myParticipant = chats
+        .find((c) => c.id === activeChatId)
+        ?.participants.find((p) => p.user.username === currentUser);
+      const mySigPubKey = myParticipant ? JSON.parse(myParticipant.user.publicKey).sig : null;
+
       const encryptedPayload = await CryptoEngine.encryptAndSignMessage(
         content,
         activeSharedSecret,
-        privKeys.privSig
+        privKeys.privSig,
+        mySigPubKey   // sender pub key for fingerprint binding
       );
       const newMsgRaw = await apiSendMessage(activeChatId, encryptedPayload);
       setMessages((prev) => [...prev, { ...newMsgRaw, content }]);

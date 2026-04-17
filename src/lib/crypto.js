@@ -163,7 +163,8 @@ export const CryptoEngine = {
   },
 
   // Send a Message (Encrypt + Sign)
-  async encryptAndSignMessage(plaintext, sharedSecretKey, myPrivSigKey) {
+  // senderPubKeyBase64: the raw Base64 of the sender's ECDSA public key (sig field from publicKey JSON)
+  async encryptAndSignMessage(plaintext, sharedSecretKey, myPrivSigKey, senderPubKeyBase64) {
     // Monotonic counter for IV prefix (4 bytes) + random suffix (8 bytes)
     const counter = CryptoEngine._msgCounter = (CryptoEngine._msgCounter || 0) + 1;
     const counterBytes = new Uint8Array(4);
@@ -172,23 +173,34 @@ export const CryptoEngine = {
     const iv = new Uint8Array([...counterBytes, ...randomBytes]);
 
     const enc = new TextEncoder();
-    // Include a simple replay‑protection AAD (timestamp)
-    const aad = enc.encode(Date.now().toString());
+
+    // AAD = chatId-scoped counter as a stable string stored in the payload.
+    // MUST be the same bytes at encrypt and decrypt — do NOT use Date.now() which changes.
+    const aadStr = `seq:${counter}`;
+    const aad = enc.encode(aadStr);
+
     const ciphertext = await window.crypto.subtle.encrypt(
       { name: "AES-GCM", iv, additionalData: aad }, sharedSecretKey, enc.encode(plaintext)
     );
 
-    // Export the public signature key to compute its fingerprint
-    const rawPubSig = await window.crypto.subtle.exportKey("raw", myPrivSigKey.publicKey);
-    const fingerprintBuf = await window.crypto.subtle.digest('SHA-256', rawPubSig);
-    const fingerprint = arrayBufferToBase64(fingerprintBuf);
+    // Compute sender identity fingerprint from the raw public sig key.
+    // senderPubKeyBase64 is passed in explicitly because after login we only
+    // have the private CryptoKey — we cannot export public from private.
+    let fingerprint = null;
+    let fingerprintBuf = null;
+    if (senderPubKeyBase64) {
+      const rawPubSig = base64ToArrayBuffer(senderPubKeyBase64);
+      fingerprintBuf = await window.crypto.subtle.digest('SHA-256', rawPubSig);
+      fingerprint = arrayBufferToBase64(fingerprintBuf);
+    }
 
-    // Sign IV ∥ ciphertext ∥ fingerprint
-    const payloadToSign = new Uint8Array(iv.byteLength + ciphertext.byteLength + fingerprintBuf.byteLength);
+    // Sign: IV ∥ ciphertext [∥ fingerprint if present]
+    const fpBytes = fingerprintBuf ? new Uint8Array(fingerprintBuf) : new Uint8Array(0);
+    const payloadToSign = new Uint8Array(iv.byteLength + ciphertext.byteLength + fpBytes.byteLength);
     let offset = 0;
     payloadToSign.set(new Uint8Array(iv), offset); offset += iv.byteLength;
     payloadToSign.set(new Uint8Array(ciphertext), offset); offset += ciphertext.byteLength;
-    payloadToSign.set(new Uint8Array(fingerprintBuf), offset);
+    if (fpBytes.byteLength) payloadToSign.set(fpBytes, offset);
 
     const signature = await window.crypto.subtle.sign(
       { name: "ECDSA", hash: { name: "SHA-384" } }, myPrivSigKey, payloadToSign
@@ -196,9 +208,10 @@ export const CryptoEngine = {
 
     return JSON.stringify({
       iv: arrayBufferToBase64(iv),
+      aad: aadStr,                            // stored so decrypt can use the same bytes
       ciphertext: arrayBufferToBase64(ciphertext),
       signature: arrayBufferToBase64(signature),
-      fingerprint: fingerprint
+      fingerprint: fingerprint                // null if sender pub key unavailable
     });
   },
 
@@ -208,39 +221,46 @@ export const CryptoEngine = {
     const iv = base64ToArrayBuffer(payload.iv);
     const ciphertext = base64ToArrayBuffer(payload.ciphertext);
     const signature = base64ToArrayBuffer(payload.signature);
+    const aadStr = payload.aad || "";         // fall back to empty string for old messages
     const receivedFingerprint = payload.fingerprint;
 
     const peerPubSigKey = await window.crypto.subtle.importKey(
       "raw", base64ToArrayBuffer(peerPubSigKeyRawBase64), { name: "ECDSA", namedCurve: "P-384" }, true, ["verify"]
     );
 
-    // Re‑compute fingerprint from the stored public key to compare
-    const rawPubSig = await window.crypto.subtle.exportKey("raw", peerPubSigKey);
-    const expectedFingerprintBuf = await window.crypto.subtle.digest('SHA-256', rawPubSig);
-    const expectedFingerprint = arrayBufferToBase64(expectedFingerprintBuf);
-    if (expectedFingerprint !== receivedFingerprint) {
-      throw new CryptoAuthError('Public key fingerprint mismatch – possible MITM attack.');
+    // Verify sender identity fingerprint (skip check if not present — old message format)
+    let fingerprintBuf = null;
+    if (receivedFingerprint) {
+      const rawPubSig = await window.crypto.subtle.exportKey("raw", peerPubSigKey);
+      fingerprintBuf = await window.crypto.subtle.digest('SHA-256', rawPubSig);
+      const expectedFingerprint = arrayBufferToBase64(fingerprintBuf);
+      if (expectedFingerprint !== receivedFingerprint) {
+        throw new CryptoAuthError('Public key fingerprint mismatch – possible MITM attack.');
+      }
     }
 
-    const payloadToSign = new Uint8Array(iv.byteLength + ciphertext.byteLength + expectedFingerprintBuf.byteLength);
+    // Reconstruct the signed payload for verification
+    const fpBytes = fingerprintBuf ? new Uint8Array(fingerprintBuf) : new Uint8Array(0);
+    const payloadToVerify = new Uint8Array(iv.byteLength + ciphertext.byteLength + fpBytes.byteLength);
     let offset = 0;
-    payloadToSign.set(new Uint8Array(iv), offset); offset += iv.byteLength;
-    payloadToSign.set(new Uint8Array(ciphertext), offset); offset += ciphertext.byteLength;
-    payloadToSign.set(new Uint8Array(expectedFingerprintBuf), offset);
+    payloadToVerify.set(new Uint8Array(iv), offset); offset += iv.byteLength;
+    payloadToVerify.set(new Uint8Array(ciphertext), offset); offset += ciphertext.byteLength;
+    if (fpBytes.byteLength) payloadToVerify.set(fpBytes, offset);
 
-    // ANTI‑MASQUERADE LOGIC
+    // ANTI-MASQUERADE: verify ECDSA signature
     const isValid = await window.crypto.subtle.verify(
-      { name: "ECDSA", hash: { name: "SHA-384" } }, peerPubSigKey, signature, payloadToSign
+      { name: "ECDSA", hash: { name: "SHA-384" } }, peerPubSigKey, signature, payloadToVerify
     );
     if (!isValid) {
       throw new CryptoAuthError('Digital signature verification failed – message forged or corrupted.');
     }
 
-    // Decrypt content – include same AAD (timestamp) used during encryption
-    const aad = new TextEncoder().encode(Date.now().toString()); // Note: in real impl, store AAD with payload
+    // Decrypt — use the stored AAD string from the payload
+    const aad = new TextEncoder().encode(aadStr);
     const plaintextBuffer = await window.crypto.subtle.decrypt(
       { name: "AES-GCM", iv: new Uint8Array(iv), additionalData: aad }, sharedSecretKey, ciphertext
     );
     return new TextDecoder().decode(plaintextBuffer);
   }
 };
+

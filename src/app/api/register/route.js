@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic';
 
+import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
@@ -13,12 +14,17 @@ const registerSchema = z.object({
 
 export async function POST(req) {
   try {
-    const body = await req.json();
-    const validation = registerSchema.safeParse(body);
+    let body;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    }
 
+    const validation = registerSchema.safeParse(body);
     if (!validation.success) {
-      return Response.json(
-        { error: "Cryptographic Handshake Integration Failed" },
+      return NextResponse.json(
+        { error: "Validation failed: " + validation.error.issues.map(i => i.message).join(", ") },
         { status: 400 }
       );
     }
@@ -27,10 +33,7 @@ export async function POST(req) {
 
     const existingUser = await prisma.user.findUnique({ where: { username } });
     if (existingUser) {
-      return Response.json(
-        { error: "Node explicitly mapped already." },
-        { status: 409 }
-      );
+      return NextResponse.json({ error: "Node explicitly mapped already." }, { status: 409 });
     }
 
     const passwordHash = await bcrypt.hash(password, 12);
@@ -39,9 +42,14 @@ export async function POST(req) {
       data: { username, passwordHash, publicKey, encryptedPrivateKey },
     });
 
-    return Response.json({ success: true }, { status: 201 });
+    return NextResponse.json({ success: true }, { status: 201 });
   } catch (err) {
-    console.error("[/api/register] Error:", err);
-    return Response.json({ error: "Internal server error" }, { status: 500 });
+    // Surface the real error in the response so it's visible without Netlify log access
+    const message = err?.message || String(err);
+    console.error("[/api/register] Unhandled error:", message);
+    return NextResponse.json(
+      { error: "Registration failed: " + message },
+      { status: 500 }
+    );
   }
 }
