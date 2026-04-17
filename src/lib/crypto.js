@@ -101,7 +101,8 @@ export const CryptoEngine = {
     const iv = base64ToArrayBuffer(parsed.iv);
     const data = base64ToArrayBuffer(parsed.data);
 
-    const enc = new TextEncoder();n    const keyMaterial = await window.crypto.subtle.importKey(
+    const enc = new TextEncoder();
+    const keyMaterial = await window.crypto.subtle.importKey(
       "raw", enc.encode(password), { name: "PBKDF2" }, false, ["deriveKey"]
     );
     // Use the same 600,000 iteration count as encryption
