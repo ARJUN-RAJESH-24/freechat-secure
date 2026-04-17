@@ -2,11 +2,12 @@
 const nextConfig = {
   // Disable x-powered-by to hide framework fingerprint from Burp/Nmap scans
   poweredByHeader: false,
-  
+
   // Hardened Production Security Headers
   async headers() {
     return [
       {
+        // Global security headers for all routes
         source: "/(.*)",
         headers: [
           {
@@ -17,9 +18,9 @@ const nextConfig = {
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "font-src 'self' https://fonts.gstatic.com",
               "img-src 'self' data: blob:",
-              "connect-src 'self'",             // Restricted to same origin in production
-              "frame-ancestors 'none'",         // Clickjacking prevention
-              "form-action 'self'",             // Forms only submit to same origin
+              "connect-src 'self'",
+              "frame-ancestors 'none'",
+              "form-action 'self'",
               "base-uri 'self'",
               "object-src 'none'",
               "upgrade-insecure-requests",
@@ -36,8 +37,18 @@ const nextConfig = {
           { key: "Cross-Origin-Embedder-Policy", value: "require-corp" },
         ],
       },
+      {
+        // Prevent browser/CDN from caching pages that embed Server Action IDs.
+        // Stale cached HTML after a redeploy causes "Server Action was not found" errors.
+        source: "/(register|login|chat)(.*)",
+        headers: [
+          { key: "Cache-Control", value: "no-store, no-cache, must-revalidate" },
+          { key: "Pragma", value: "no-cache" },
+        ],
+      },
     ];
   },
 };
 
 module.exports = nextConfig;
+
