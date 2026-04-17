@@ -1,8 +1,21 @@
+"use client";
 /**
  * E2EE Cryptography Engine utilizing `window.crypto.subtle`
  * Designed strictly against masquerade attacks via ECDSA Verification
  * Confidentiality via ECDH (Diffie-Hellman) Key Derivation & AES-GCM
+ *
+ * IMPORTANT: This module is CLIENT-ONLY. It must never be imported in a
+ * Server Component or API route — window.crypto.subtle does not exist in Node.js.
  */
+
+// Hard bail-out if accidentally evaluated in a server (Node.js) context.
+// This gives a clear dev error instead of the vague production digest message.
+if (typeof window === "undefined") {
+  throw new Error(
+    "[CryptoEngine] This module can only be used in the browser. " +
+    "Do not import it from a Server Component, layout, or API route."
+  );
+}
 
 // Helper utilities
 function arrayBufferToBase64(buffer) {
