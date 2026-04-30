@@ -157,6 +157,13 @@ export default function ClientChat({ initialChats, currentUser, encryptedPrivate
         ?.participants.find((p) => p.user.username === currentUser);
       const mySigPubKey = myParticipant ? JSON.parse(myParticipant.user.publicKey).sig : null;
 
+      const encryptedPayload = await CryptoEngine.encryptAndSignMessage(
+        content,
+        activeSharedSecret,
+        privKeys.privSig,
+        mySigPubKey   // sender pub key for fingerprint binding
+      );
+
       const newMsgRaw = await apiSendMessage(activeChatId, encryptedPayload, "TEXT");
       setMessages((prev) => [...prev, { ...newMsgRaw, content, type: "TEXT" }]);
     } catch (err) {
