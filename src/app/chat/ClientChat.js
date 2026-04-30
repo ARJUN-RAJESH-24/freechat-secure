@@ -131,6 +131,13 @@ export default function ClientChat({ initialChats, currentUser, encryptedPrivate
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Focus textarea when chat changes
+  useEffect(() => {
+    if (activeChatId && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [activeChatId]);
+
   async function handleUnlock(e) {
     e.preventDefault();
     setUnlockError("");
@@ -294,7 +301,15 @@ export default function ClientChat({ initialChats, currentUser, encryptedPrivate
         <div style={{ padding: "1.5rem", borderBottom: "1px solid var(--glass-border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
             <div style={{ fontSize: "0.75rem", color: "var(--accent-cyan)", letterSpacing: "1px" }}>NODE AUTHENTICATED</div>
-            <div style={{ fontWeight: "bold" }}>{currentUser}</div>
+            <div style={{ fontWeight: "bold", display: "flex", alignItems: "center", gap: "8px" }}>
+              {currentUser}
+              <button onClick={() => {
+                navigator.clipboard.writeText(currentUser);
+                showToast("Identity ID copied to clipboard!", "success");
+              }} style={{ background: "transparent", border: "none", padding: "4px", color: "var(--text-secondary)", cursor: "pointer" }} title="Copy Node ID">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+              </button>
+            </div>
           </div>
           <button onClick={() => signOut()} style={{ padding: "8px", fontSize: "0.75rem", border: "1px solid #ff4d4d", color: "#ff4d4d", background: "transparent", whiteSpace: "nowrap", flexShrink: 0 }}>
             LOCK NODE

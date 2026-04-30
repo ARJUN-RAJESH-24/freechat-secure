@@ -92,7 +92,12 @@ export default function RegisterForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="glass-panel fade-in" style={{ padding: "3rem", width: "100%", maxWidth: "450px", display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+    <div style={{ position: "relative", width: "100%", maxWidth: "450px" }}>
+      <Link href="/" style={{ position: "absolute", top: "-40px", left: "0", color: "var(--text-secondary)", fontSize: "0.875rem", display: "flex", alignItems: "center", gap: "8px", textDecoration: "none", transition: "color 0.2s" }} onMouseEnter={(e) => e.target.style.color = "#fff"} onMouseLeave={(e) => e.target.style.color = "var(--text-secondary)"}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+        RETURN TO PROTOCOL
+      </Link>
+      <form onSubmit={handleSubmit} className="glass-panel fade-in" style={{ padding: "3rem", width: "100%", display: "flex", flexDirection: "column", gap: "1.5rem" }}>
 
       <h2 className="animate-brand" style={{ textAlign: "center", fontSize: "3rem", color: "#ffffff", fontWeight: "900", letterSpacing: "2px", margin: "0" }}>FREECHAT</h2>
       <p style={{ textAlign: "center", fontSize: "0.875rem", color: "var(--accent-cyan)", marginTop: "-1rem", letterSpacing: "4px" }}>NODE INITIALIZATION</p>
@@ -111,7 +116,7 @@ export default function RegisterForm() {
 
       <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
         <label htmlFor="username" style={{ fontSize: "0.75rem", color: "var(--text-secondary)", letterSpacing: "1px" }}>USERNAME</label>
-        <input type="text" id="username" name="username" required autoComplete="off" disabled={status !== "idle"} minLength={4} />
+        <input type="text" id="username" name="username" required autoComplete="off" disabled={status !== "idle"} minLength={4} autoFocus />
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
@@ -164,6 +169,7 @@ export default function RegisterForm() {
 
       <p className="mono-text" style={{ textAlign: "center", fontSize: "0.65rem", color: "rgba(255,255,255,0.2)" }}>SECURE-GEN v1.3</p>
 
-    </form>
+      </form>
+    </div>
   );
 }
