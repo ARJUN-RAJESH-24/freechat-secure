@@ -8,7 +8,8 @@ import { NextResponse } from "next/server";
 
 const messageSchema = z.object({
   chatId: z.string().uuid(),
-  content: z.string().min(1).max(10000),
+  content: z.string().min(1).max(5000000), // 5MB for base64 images
+  type: z.enum(["TEXT", "IMAGE"]).default("TEXT"),
 });
 
 async function getAuthorizedSession(chatId) {
@@ -58,17 +59,17 @@ export async function POST(req) {
     const validation = messageSchema.safeParse(body);
 
     if (!validation.success) {
-      return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
+      return NextResponse.json({ error: "Invalid payload: " + validation.error.message }, { status: 400 });
     }
 
-    const { chatId, content } = validation.data;
+    const { chatId, content, type } = validation.data;
     const userId = await getAuthorizedSession(chatId);
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const msg = await prisma.message.create({
-      data: { content, userId, chatId },
+      data: { content, type, userId, chatId },
       include: { sender: { select: { username: true } } },
     });
 

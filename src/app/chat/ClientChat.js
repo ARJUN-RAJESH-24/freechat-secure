@@ -17,11 +17,11 @@ async function apiGetMessages(chatId) {
   return res.json();
 }
 
-async function apiSendMessage(chatId, content) {
+async function apiSendMessage(chatId, content, type = "TEXT") {
   const res = await fetch("/api/chat/messages", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ chatId, content }),
+    body: JSON.stringify({ chatId, content, type }),
   });
   if (!res.ok) {
     const data = await res.json();
@@ -53,9 +53,11 @@ export default function ClientChat({ initialChats, currentUser, encryptedPrivate
   const [unlockError, setUnlockError] = useState("");
   const [activeSharedSecret, setActiveSharedSecret] = useState(null);
   const [toast, setToast] = useState(null);
+  const [isEncrypting, setIsEncrypting] = useState(false);
 
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   const showToast = (msg, type = "error") => {
     setToast({ msg, type });
@@ -155,18 +157,66 @@ export default function ClientChat({ initialChats, currentUser, encryptedPrivate
         ?.participants.find((p) => p.user.username === currentUser);
       const mySigPubKey = myParticipant ? JSON.parse(myParticipant.user.publicKey).sig : null;
 
-      const encryptedPayload = await CryptoEngine.encryptAndSignMessage(
-        content,
-        activeSharedSecret,
-        privKeys.privSig,
-        mySigPubKey   // sender pub key for fingerprint binding
-      );
-      const newMsgRaw = await apiSendMessage(activeChatId, encryptedPayload);
-      setMessages((prev) => [...prev, { ...newMsgRaw, content }]);
+      const newMsgRaw = await apiSendMessage(activeChatId, encryptedPayload, "TEXT");
+      setMessages((prev) => [...prev, { ...newMsgRaw, content, type: "TEXT" }]);
     } catch (err) {
       showToast("Encryption engine halt: " + err.message);
     }
   }
+
+  const handleFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    // Clear the input so the same file can be selected again
+    e.target.value = "";
+
+    if (file.size > 2 * 1024 * 1024) {
+      showToast("File too large. Maximum size for P2P encrypted bridge is 2MB.");
+      return;
+    }
+
+    if (!activeChatId || !activeSharedSecret || !privKeys) {
+      showToast("Secure connection not established.");
+      return;
+    }
+
+    setIsEncrypting(true);
+    try {
+      // 1. Read file as Base64 Data URL
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        try {
+          const base64Content = event.target.result;
+          
+          const myParticipant = chats
+            .find((c) => c.id === activeChatId)
+            ?.participants.find((p) => p.user.username === currentUser);
+          const mySigPubKey = myParticipant ? JSON.parse(myParticipant.user.publicKey).sig : null;
+
+          // 2. Encrypt the Base64 string exactly like a text message
+          const encryptedPayload = await CryptoEngine.encryptAndSignMessage(
+            base64Content,
+            activeSharedSecret,
+            privKeys.privSig,
+            mySigPubKey
+          );
+
+          // 3. Send the encrypted payload
+          const newMsgRaw = await apiSendMessage(activeChatId, encryptedPayload, "IMAGE");
+          setMessages((prev) => [...prev, { ...newMsgRaw, content: base64Content, type: "IMAGE" }]);
+        } catch (err) {
+          showToast("Attachment encryption failed: " + err.message);
+        } finally {
+          setIsEncrypting(false);
+        }
+      };
+      reader.readAsDataURL(file);
+    } catch (err) {
+      showToast("File processing failed.");
+      setIsEncrypting(false);
+    }
+  };
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -327,7 +377,7 @@ export default function ClientChat({ initialChats, currentUser, encryptedPrivate
                     <div
                       className="glass-panel"
                       style={{
-                        padding: "1rem 1.25rem",
+                        padding: msg.type === "IMAGE" && !msg.corrupted ? "0.5rem" : "1rem 1.25rem",
                         borderRadius: isMine ? "12px 12px 0 12px" : "12px 12px 12px 0",
                         background: msg.corrupted ? "rgba(255,0,0,0.2)" : isMine ? "rgba(0, 229, 255, 0.15)" : "var(--glass-bg)",
                         border: msg.corrupted ? "1px solid #ff4d4d" : isMine ? "1px solid rgba(0, 229, 255, 0.4)" : "1px solid var(--glass-border)",
@@ -336,7 +386,13 @@ export default function ClientChat({ initialChats, currentUser, encryptedPrivate
                         lineHeight: "1.5"
                       }}
                     >
-                      {msg.content}
+                      {msg.corrupted ? (
+                        msg.content
+                      ) : msg.type === "IMAGE" ? (
+                        <img src={msg.content} alt="Encrypted Attachment" style={{ maxWidth: "100%", maxHeight: "300px", borderRadius: "8px", display: "block" }} />
+                      ) : (
+                        msg.content
+                      )}
                     </div>
                     {isMine && (
                       <div style={{ fontSize: "0.7rem", color: "var(--text-secondary)", alignSelf: "flex-end", paddingRight: "4px" }}>
@@ -351,20 +407,21 @@ export default function ClientChat({ initialChats, currentUser, encryptedPrivate
 
             <div style={{ padding: "1.5rem", borderTop: "1px solid var(--glass-border)", background: "rgba(4, 13, 20, 0.8)", backdropFilter: "blur(10px)" }}>
               <form onSubmit={handleSend} style={{ display: "flex", gap: "1rem", alignItems: "flex-end" }}>
-                <button type="button" onClick={() => showToast("Secure P2P Upload Bridge Offline")} style={{ padding: "12px", background: "transparent", border: "1px dashed var(--text-secondary)", color: "var(--text-secondary)" }}>
+                <input type="file" accept="image/*" ref={fileInputRef} onChange={handleFileChange} style={{ display: "none" }} />
+                <button type="button" onClick={() => fileInputRef.current?.click()} disabled={!activeSharedSecret || isEncrypting} style={{ padding: "12px", background: "transparent", border: "1px dashed var(--text-secondary)", color: "var(--text-secondary)" }}>
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
                 </button>
                 <textarea 
                   name="content" 
                   ref={inputRef}
                   onKeyDown={handleKeyDown}
-                  disabled={!activeSharedSecret} 
+                  disabled={!activeSharedSecret || isEncrypting} 
                   required 
-                  placeholder="Transmit encrypted payload... (Shift+Enter for new line)" 
+                  placeholder={isEncrypting ? "Encrypting attachment..." : "Transmit encrypted payload... (Shift+Enter for new line)"} 
                   autoComplete="off" 
                   style={{ flex: 1, minHeight: "50px", maxHeight: "150px" }} 
                 />
-                <button type="submit" disabled={!activeSharedSecret} style={{ opacity: activeSharedSecret ? 1 : 0.5, height: "50px" }}>
+                <button type="submit" disabled={!activeSharedSecret || isEncrypting} style={{ opacity: activeSharedSecret && !isEncrypting ? 1 : 0.5, height: "50px" }}>
                   TRANSMIT
                 </button>
               </form>
