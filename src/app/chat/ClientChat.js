@@ -48,12 +48,12 @@ export default function ClientChat({ initialChats, currentUser, encryptedPrivate
   const [chats, setChats] = useState(initialChats);
   const [targetUser, setTargetUser] = useState("");
 
-  // E2EE States
   const [privKeys, setPrivKeys] = useState(null); // { privSig, privEnc }
   const [unlockError, setUnlockError] = useState("");
   const [activeSharedSecret, setActiveSharedSecret] = useState(null);
   const [toast, setToast] = useState(null);
   const [isEncrypting, setIsEncrypting] = useState(false);
+  const [showUnlockPassword, setShowUnlockPassword] = useState(false);
 
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
@@ -267,7 +267,16 @@ export default function ClientChat({ initialChats, currentUser, encryptedPrivate
           )}
           <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
             <label style={{ fontSize: "0.875rem", color: "var(--text-secondary)" }}>SECURE PASSPHRASE</label>
-            <input type="password" name="password" required autoFocus />
+            <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+              <input type={showUnlockPassword ? "text" : "password"} name="password" required autoFocus style={{ width: "100%", paddingRight: "40px" }} />
+              <button type="button" onClick={() => setShowUnlockPassword(!showUnlockPassword)} style={{ position: "absolute", right: "8px", background: "transparent", border: "none", padding: "4px", color: "var(--text-secondary)", cursor: "pointer", display: "flex" }}>
+                {showUnlockPassword ? (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24M1 1l22 22"></path></svg>
+                ) : (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                )}
+              </button>
+            </div>
           </div>
           <button type="submit" style={{ marginTop: "1rem" }}>DECRYPT IDENTITY</button>
           <button type="button" onClick={() => signOut()} style={{ background: "transparent", color: "#ff4d4d", border: "1px solid #ff4d4d" }}>

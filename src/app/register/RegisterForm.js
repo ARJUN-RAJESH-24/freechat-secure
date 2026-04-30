@@ -9,6 +9,8 @@ export default function RegisterForm() {
   const router = useRouter();
   const [error, setError] = useState("");
   const [status, setStatus] = useState("idle"); // idle | generating | submitting | success
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // Proactive Secure Context Check
   useEffect(() => {
@@ -37,6 +39,13 @@ export default function RegisterForm() {
 
       if (password.length < 12) {
         setError("Passphrase must be at least 12 characters.");
+        setStatus("idle");
+        return;
+      }
+
+      const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#^()_\-+=\[\]{}|\\:;"'<>,./~`])[A-Za-z\d@$!%*?&#^()_\-+=\[\]{}|\\:;"'<>,./~`]{12,}$/;
+      if (!passwordRegex.test(password)) {
+        setError("Passphrase must contain at least 1 uppercase letter, 1 lowercase letter, 1 number, and 1 special character.");
         setStatus("idle");
         return;
       }
@@ -107,12 +116,30 @@ export default function RegisterForm() {
 
       <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
         <label htmlFor="password" style={{ fontSize: "0.75rem", color: "var(--text-secondary)", letterSpacing: "1px" }}>SECURE PASSPHRASE (min 12 chars)</label>
-        <input type="password" id="password" name="password" required autoComplete="new-password" disabled={status !== "idle"} minLength={12} />
+        <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+          <input type={showPassword ? "text" : "password"} id="password" name="password" required autoComplete="new-password" disabled={status !== "idle"} minLength={12} style={{ width: "100%", paddingRight: "40px" }} />
+          <button type="button" onClick={() => setShowPassword(!showPassword)} style={{ position: "absolute", right: "8px", background: "transparent", border: "none", padding: "4px", color: "var(--text-secondary)", cursor: "pointer", display: "flex" }}>
+            {showPassword ? (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24M1 1l22 22"></path></svg>
+            ) : (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            )}
+          </button>
+        </div>
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
         <label htmlFor="confirmPassword" style={{ fontSize: "0.75rem", color: "var(--text-secondary)", letterSpacing: "1px" }}>CONFIRM PASSPHRASE</label>
-        <input type="password" id="confirmPassword" name="confirmPassword" required autoComplete="new-password" disabled={status !== "idle"} minLength={12} />
+        <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+          <input type={showConfirmPassword ? "text" : "password"} id="confirmPassword" name="confirmPassword" required autoComplete="new-password" disabled={status !== "idle"} minLength={12} style={{ width: "100%", paddingRight: "40px" }} />
+          <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} style={{ position: "absolute", right: "8px", background: "transparent", border: "none", padding: "4px", color: "var(--text-secondary)", cursor: "pointer", display: "flex" }}>
+            {showConfirmPassword ? (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24M1 1l22 22"></path></svg>
+            ) : (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            )}
+          </button>
+        </div>
       </div>
 
       <button type="submit" disabled={status !== "idle"} style={{ marginTop: "1rem" }}>
