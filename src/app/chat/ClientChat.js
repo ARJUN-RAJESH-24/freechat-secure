@@ -280,14 +280,14 @@ export default function ClientChat({ initialChats, currentUser, encryptedPrivate
             <div style={{ fontSize: "0.75rem", color: "var(--accent-cyan)", letterSpacing: "1px" }}>NODE AUTHENTICATED</div>
             <div style={{ fontWeight: "bold" }}>{currentUser}</div>
           </div>
-          <button onClick={() => signOut()} style={{ padding: "8px", fontSize: "0.75rem", border: "1px solid #ff4d4d", color: "#ff4d4d", background: "transparent" }}>
+          <button onClick={() => signOut()} style={{ padding: "8px", fontSize: "0.75rem", border: "1px solid #ff4d4d", color: "#ff4d4d", background: "transparent", whiteSpace: "nowrap", flexShrink: 0 }}>
             LOCK NODE
           </button>
         </div>
 
         <form onSubmit={handleNewConnection} style={{ padding: "1rem", display: "flex", gap: "0.5rem", borderBottom: "1px solid var(--glass-border)" }}>
-          <input type="text" placeholder="Target Node ID..." value={targetUser} onChange={(e) => setTargetUser(e.target.value)} style={{ flex: 1, padding: "8px" }} />
-          <button type="submit" style={{ padding: "8px 12px" }}>CONNECT</button>
+          <input type="text" placeholder="Target Node ID..." value={targetUser} onChange={(e) => setTargetUser(e.target.value)} style={{ flex: 1, padding: "8px", minWidth: 0 }} />
+          <button type="submit" style={{ padding: "8px 12px", flexShrink: 0, whiteSpace: "nowrap" }}>CONNECT</button>
         </form>
 
         <div style={{ flex: 1, overflowY: "auto", padding: "1rem", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
